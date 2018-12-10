@@ -3,8 +3,10 @@ import datetime
 from enum import Enum
 
 class OneNight:
-	guardID = ''
-	minutes = [None] * 60
+	def __init__(self, guardID=None):
+		self.guardID = guardID or None
+		self.minutes = [0] * 60	
+
 
 class State(Enum):
 	asleep = "asleep"
@@ -39,24 +41,101 @@ def readFile():
 	finally:
 		fp.close()
 
-def guardSleeping(guardID, startTime, endTime):
-	print ("{}: {} - {}".format(guardID, startTime, endTime))
+def guardSleeping(guardID, startTime, endTime, newHash):
+	newDate = startTime.replace(minute=0);
+	if not newDate in newHash:
+		newHash[newDate] = OneNight(guardID = guardID)
+
+	for x in range(startTime.minute, endTime.minute):
+		newHash[newDate].minutes[x] = 1
+
+	print ("{}: {} - {} {}".format(guardID, startTime, endTime, newDate))
 
 def rotateData(operationData):
 	guardID = ''
 	lastSleepTime = 0
+	newHash = {}
 
 	for key in sorted(operationData.keys()):
 		time = key
 		value = operationData[key]
 		if value == State.awake:
-			guardSleeping(guardID, lastSleepTime, key)
+			guardSleeping(guardID, lastSleepTime, key, newHash)
 		elif value == State.asleep:
 			lastSleepTime = key
 		else:
 			guardID = value
 
-#		print(type(value))
+	return newHash
+
+def prettyPrintHash(newHash):
+	for x in sorted(newHash.keys()):
+		thisLine = str(x) + ": " + str(newHash[x].guardID) + "\t"
+		for y in range(60):
+			if (newHash[x].minutes[y] == 0):
+				thisLine += "."
+			else:
+				thisLine += "*"
+
+		thisLine += "({})".format(countMinutesAsleep(newHash[x].minutes))
+		print(thisLine)
+
+def countMinutesAsleep(minuteList):
+	minutesAsleep = 0
+	for x in minuteList:
+		if not x == 0:
+			minutesAsleep+=1
+	return minutesAsleep
+
+def sumMinutesPerGuard(newHash):
+	minuteGuardHash = {}
+	for x in sorted(newHash.keys()):
+		guardID = newHash[x].guardID
+		if not guardID in minuteGuardHash:
+			minuteGuardHash[guardID] = 0
+		minuteGuardHash[guardID] += countMinutesAsleep(newHash[x].minutes)
+	print (minuteGuardHash)
+	maxGuardID = list(minuteGuardHash.keys())[0]
+
+	for y in minuteGuardHash.keys():
+		if (minuteGuardHash[y] > minuteGuardHash[maxGuardID]):
+			maxGuardID = y
+
+	print(maxGuardID)
+	return maxGuardID
+
+def findSleepiestMinute(newHash, guardID):
+	minutesInHour = [0] * 60
+	for x in newHash.keys():
+		if not newHash[x].guardID == guardID:
+			continue
+		for y in range(60):
+			minutesInHour[y] += newHash[x].minutes[y]
+
+	sleepiestMinute = 0
+	for z in range(60):
+		if minutesInHour[z] > minutesInHour[sleepiestMinute]:
+			sleepiestMinute = z
+
+	print("Guard {}:\t{} {} ({})".format(guardID, sleepiestMinute, minutesInHour[sleepiestMinute], guardID * sleepiestMinute))
+	return sleepiestMinute
+
+def findSleepiestMinuteForAllGuards(newHash):
+	guardList = []
+	for x in newHash.keys():
+		if not newHash[x].guardID in guardList:
+			guardList.append(newHash[x].guardID)
+
+	for y in guardList:
+		findSleepiestMinute(newHash, y)
+
+
 
 operationData = readFile()
-rotateData(operationData)
+newHash = rotateData(operationData)
+prettyPrintHash(newHash)
+sleepiestGuard = sumMinutesPerGuard(newHash)
+sleepiestMinute = findSleepiestMinute(newHash, sleepiestGuard)
+print(sleepiestGuard * sleepiestMinute)
+
+findSleepiestMinuteForAllGuards(newHash)

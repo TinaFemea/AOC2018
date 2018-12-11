@@ -80,7 +80,7 @@ theMax = 0
 for a in cordList:
 	countOfThis = spotsForPoint[a.name]
 	if (a.name in infinitePoints):
-		print("{}: infinite (x)".format(a.name))
+		print("{}: infinite".format(a.name))
 	else:
 		print ("{}: {}".format(a.name, countOfThis))
 		if countOfThis > theMax:
